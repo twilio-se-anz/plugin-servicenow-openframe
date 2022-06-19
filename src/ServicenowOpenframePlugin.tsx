@@ -67,6 +67,23 @@ export default class ServicenowOpenframePlugin extends FlexPlugin {
     }, 1000);
 
     manager.workerClient.on("reservationCreated", () => openFrame.show());
+
+    // Invoke CTI.do when a reservation is accepted
+    flex.Actions.addListener('beforeAcceptTask', (payload) => {
+      console.log('beforeAcceptTask', payload.task);
+      let callerId = payload.task.attributes.from;
+      console.log('callerId', callerId);
+      // let customerId = payload.task.attributes.customerId;
+      // let incidentId = payload.task.attributes.incidentId;
+
+      openFrame.openServiceNowForm({ entity: 'cti', query: `sysparm_caller_phone=${callerId}` });
+
+      // if (incidentId) {
+      //   openFrame.openServiceNowForm({ entity: 'incident', query: `sys_id=${incidentId}` });
+      // } else if (customerId) {
+      //   openFrame.openServiceNowForm({ entity: 'customer_account', query: `sys_id=${customerId}` });
+      // }
+    });
   }
 
   /**
