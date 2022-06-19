@@ -6,7 +6,7 @@ import CustomTheme from './components/CustomTheme'
 
 const PLUGIN_NAME = 'SnowPlugin';
 const serviceNowInstance = "dev126338.service-now.com";
-const openFrameConfig = { height: 500, width: 400 };
+const openFrameConfig = { height: 600, width: 400 };
 
 export default class SnowPlugin extends FlexPlugin {
   constructor() {
@@ -47,19 +47,19 @@ export default class SnowPlugin extends FlexPlugin {
     function initFailure(error) {
     console.log("OpenFrame init failed..", error);
     }
-    
+
     setTimeout(() => window.openFrameAPI.init(openFrameConfig, initSuccess, initFailure), 1000);
 
     manager.workerClient.on("reservationCreated", () => window.openFrameAPI.show());  
   
     flex.Actions.addListener('beforeAcceptTask', (payload) => {
-      let ticketId = payload.task.attributes.ticketId;
-      let requesterId = payload.task.attributes.requesterId;
+      let customerId = payload.task.attributes.customerId;
+      let incidentId = payload.task.attributes.incidentId;
 
-      if(ticketId && requesterId) {
-        window.openFrameAPI.openServiceNowForm({entity:'customer_account', query:`sys_id=${requesterId}`, 'interaction_sys_id': ticketId});
-      } else if (requesterId) {
-        window.openFrameAPI.openServiceNowForm({entity:'customer_account', query:`sys_id=${requesterId}`});
+      if(incidentId) {
+        window.openFrameAPI.openServiceNowForm({entity:'incident', query:`sys_id=${incidentId}`});
+      } else if (customerId) {
+        window.openFrameAPI.openServiceNowForm({entity:'customer_account', query:`sys_id=${customerId}`});
       }  
     });
 
