@@ -4,10 +4,11 @@ import { FlexPlugin } from '@twilio/flex-plugin';
 
 import reducers, { namespace } from './states';
 import { Themer } from './configuration/Themer';
+import { ServiceNowMessage } from 'types/ServiceNowMessage';
 
 const PLUGIN_NAME = 'ServicenowOpenframePlugin';
 
-const serviceNowInstance = "dev126338.service-now.com";
+const serviceNowInstance = "dev96686.service-now.com";
 const openFrameConfig = { height: 600, width: 400 };
 
 export default class ServicenowOpenframePlugin extends FlexPlugin {
@@ -37,19 +38,23 @@ export default class ServicenowOpenframePlugin extends FlexPlugin {
     flex.AgentDesktopView.defaultProps.splitterOptions = { initialFirstPanelSize: "400px", minimumFirstPanelSize: "400px" };
     flex.RootContainer.Content.remove("project-switcher")
 
-    flex.MainHeader.defaultProps.logoUrl = "https://servicenow-6893.twil.io/officeworks_logo.png"
+    // flex.MainHeader.defaultProps.logoUrl = "https://servicenow-6893.twil.io/officeworks_logo.png"
 
-    const config = Themer.generateTheme({ lightText: '#FFFFFF', darkText: '#005bb1', background: '#005bb1' });
+    // const config = Themer.generateTheme({ lightText: '#FFFFFF', darkText: '#005bb1', background: '#005bb1' });
 
-    manager.updateConfig(config);
+    // manager.updateConfig(config);
 
     let openFrame: any = null;
 
     // TODO: Update with customer name or similar
-    manager.strings.NoTasks = "Officeworks IT";
+    // manager.strings.NoTasks = "Officeworks IT";
 
     function handleCommunicationEvent(context: any) {
       console.log("Communication from Topframe", context);
+      const message = context as ServiceNowMessage;
+      if (message.type === "OUTGOING_CALL") {
+        Flex.Actions.invokeAction("StartOutboundCall", { destination: message.data.metaData.phoneNumber });
+      }
     }
     function initSuccess(snConfig: any) {
       console.log("openframe configuration", snConfig);
