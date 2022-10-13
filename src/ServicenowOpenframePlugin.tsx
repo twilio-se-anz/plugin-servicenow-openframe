@@ -23,8 +23,7 @@ export default class ServicenowOpenframePlugin extends FlexPlugin {
    * @param manager { Flex.Manager }
    */
   async init(flex: typeof Flex, manager: Flex.Manager): Promise<void> {
-    // Load Openframe library
-    loadJS(manager.serviceConfiguration.attributes.openframe_url);
+
 
     // Default layout
     flex.AgentDesktopView.defaultProps.showPanel2 = false;
@@ -53,6 +52,7 @@ export default class ServicenowOpenframePlugin extends FlexPlugin {
       }
     }
 
+    // Openframe has initialised, do our setup and event mapping
     function initSuccess(snConfig: any) {
       console.log("openframe configuration", snConfig);
       // Wire up agent state to SNOW agent state
@@ -70,49 +70,43 @@ export default class ServicenowOpenframePlugin extends FlexPlugin {
       // Open the phone panel when were are assigned a task
       manager.workerClient?.on("reservationCreated", () => openFrame.show());
 
-      // Invoke CTI.do when a reservation is accepted
-      flex.Actions.addListener('afterAcceptTask', (payload) => {
-        console.log('afterAcceptTask', payload.task);
+      // Invoke CTI.do when a reservation is accepted - i.e. do a screenpop
+      flex.Actions.addListener('beforeAcceptTask', (payload) => {
+        console.log('beforeAcceptTask', payload.task);
 
         // Open the interaction created by OpenFrame for Click2Dial
         if (payload.task.attributes.direction === 'outbound') {
-          console.log('outbound call accepted');
+          console.log('Outbound call accepted');
           openFrame.openServiceNowForm({ entity: 'interaction', query: payload.task.attributes.interationQuery });
         } else {
+          // These IDs are created or queried in the IVR. Property names flow through from ServiceNow.
+          const { interaction_sys_id, incident_sys_id } = payload.task.attributes;
 
-
-          let callerId = payload.task.attributes.from;
-          let channelType = payload.task.attributes.channelType;
-          console.log('callerId', callerId);
-          // let customerId = payload.task.attributes.customerId;
-          let incidentId = payload.task.attributes.incidentId;
-
-          // openFrame.openServiceNowForm({ entity: 'cti', query: `sysparm_caller_phone=${callerId}` });
-          // openFrame.openServiceNowForm({
-          //   entity: 'interaction',
-          //   query: `sys_id=-1&sysparm_query=type=Phone^short_description=${channelType} from ${callerId}^work_notes=Speech to text result goes here`
-          // });
-          // openFrame.openServiceNowForm({ entity: '', query: 'sys_id=1204b56797f411103bc079100153afbe' });
-
-          if (incidentId) {
-            openFrame.openServiceNowForm({ entity: 'incident', query: `sys_id=${incidentId}` });
+          // Screenpop Interaction first if it exists.
+          if (interaction_sys_id) {
+            openFrame.openServiceNowForm({ entity: 'interaction', query: `sys_id=${interaction_sys_id}` });
+          } else if (incident_sys_id) {
+            openFrame.openServiceNowForm({ entity: 'incident', query: `sys_id=${incident_sys_id}` });
           }
-          //   openFrame.openServiceNowForm({ entity: 'incident', query: `sys_id=${incidentId}` });
-          // } else if (customerId) {
-          //   openFrame.openServiceNowForm({ entity: 'customer_account', query: `sys_id=${customerId}` });
-          // }
         }
       });
     }
+
     function initFailure(error: any) {
       console.log("OpenFrame init failed: ", error);
     }
 
-    // Try to init OpenFrame, may not be loaded yet so delay it and retry if required.
-    setTimeout(() => {
-      console.log(window.openFrameAPI);
+    const onOpenframeLoaded = () => {
+      console.log('onOpenframeLoaded - openframe script has loaded');
       openFrame = window.openFrameAPI;
-      openFrame.init(openFrameConfig, initSuccess, initFailure)
-    }, 3000);
+      openFrame.init(openFrameConfig, initSuccess, initFailure);
+    }
+
+    // Load Openframe library, async=false to ensure it loads before execution continues
+    var script = document.createElement("script");
+    script.src = manager.serviceConfiguration.attributes.openframe_url;
+    script.async = true;
+    script.onload = onOpenframeLoaded;
+    document.head.appendChild(script);
   }
 }
