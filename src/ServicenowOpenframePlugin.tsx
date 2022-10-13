@@ -31,6 +31,11 @@ export default class ServicenowOpenframePlugin extends FlexPlugin {
     flex.RootContainer.Content.remove("project-switcher");
     flex.MainHeader.defaultProps.logoUrl = manager.serviceConfiguration.attributes.logo_url;
 
+    // Prepend Environment value to NoTasks
+    if (manager.serviceConfiguration.attributes.no_task_string_prefix) {
+      manager.strings.NoTasks = `${manager.serviceConfiguration.attributes.no_task_string_prefix} - ${manager.strings.NoTasks}`;
+    }
+
     // This will hold a reference to the Openframe Object once it is loaded.
     let openFrame: any = null;
 
