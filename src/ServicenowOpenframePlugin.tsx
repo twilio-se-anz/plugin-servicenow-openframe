@@ -1,14 +1,13 @@
 import React from 'react';
 import * as Flex from '@twilio/flex-ui';
-import { FlexPlugin } from '@twilio/flex-plugin';
+import { FlexPlugin, loadJS } from '@twilio/flex-plugin';
 
-import reducers, { namespace } from './states';
-import { Themer } from './configuration/Themer';
+import { Activity } from 'twilio-taskrouter';
+
 import { ServiceNowMessage } from 'types/ServiceNowMessage';
 
 const PLUGIN_NAME = 'ServicenowOpenframePlugin';
 
-const serviceNowInstance = "dev96686.service-now.com";
 const openFrameConfig = { height: 600, width: 400 };
 
 export default class ServicenowOpenframePlugin extends FlexPlugin {
@@ -24,85 +23,101 @@ export default class ServicenowOpenframePlugin extends FlexPlugin {
    * @param manager { Flex.Manager }
    */
   async init(flex: typeof Flex, manager: Flex.Manager): Promise<void> {
-    this.registerReducers(manager);
-
     // Load Openframe library
-    var script = document.createElement("script");
-    script.src = `https://${serviceNowInstance}/scripts/openframe/latest/openFrameAPI.min.js`;
-    console.log('Eli says ' + script.src);
-    script.async = true;
-    document.head.appendChild(script);
+    // var script = document.createElement("script");
+    // script.src = manager.serviceConfiguration.attributes.openframe_url;
+    // console.log('Openframe URL: ' + script.src);
+    // script.async = true;
+    // document.head.appendChild(script);
+    loadJS(manager.serviceConfiguration.attributes.openframe_url);
 
     // Default layout
     flex.AgentDesktopView.defaultProps.showPanel2 = false;
     flex.AgentDesktopView.defaultProps.splitterOptions = { initialFirstPanelSize: "400px", minimumFirstPanelSize: "400px" };
-    flex.RootContainer.Content.remove("project-switcher")
+    flex.RootContainer.Content.remove("project-switcher");
+    flex.MainHeader.defaultProps.logoUrl = manager.serviceConfiguration.attributes.logo_url;
 
-    // flex.MainHeader.defaultProps.logoUrl = "https://servicenow-6893.twil.io/officeworks_logo.png"
-
-    // const config = Themer.generateTheme({ lightText: '#FFFFFF', darkText: '#005bb1', background: '#005bb1' });
-
-    // manager.updateConfig(config);
-
+    // This will hold a reference to the Openframe Object once it is loaded.
     let openFrame: any = null;
 
-    // TODO: Update with customer name or similar
-    // manager.strings.NoTasks = "Officeworks IT";
-
+    // Function to process messages from SNOW.
     function handleCommunicationEvent(context: any) {
       console.log("Communication from Topframe", context);
       const message = context as ServiceNowMessage;
+
+      // Click to Dial
       if (message.type === "OUTGOING_CALL") {
-        Flex.Actions.invokeAction("StartOutboundCall", { destination: message.data.metaData.phoneNumber });
+        const interationQuery = message.data.data.find(d => d.entity === 'interaction')?.query;
+
+        Flex.Actions.invokeAction("StartOutboundCall", {
+          destination: message.data.metaData.phoneNumber,
+          taskAttributes: {
+            interationQuery: interationQuery
+          }
+        });
       }
     }
+
     function initSuccess(snConfig: any) {
       console.log("openframe configuration", snConfig);
-      //register for communication event from TopFrame
+      // Wire up agent state to SNOW agent state
+      manager.events.addListener("workerActivityUpdated", (activity: Activity, allActivities: Map<string, Activity>) => {
+        openFrame.setPresenceIndicator(activity.name, activity.available ? 'green' : 'red');
+      });
+
+      // Set initial agent state in SNOW
+      openFrame.setPresenceIndicator(manager.workerClient?.activity.name, manager.workerClient?.activity.available ? 'green' : 'red');
+
+      // Register for communication event from TopFrame
       openFrame.subscribe(openFrame.EVENTS.COMMUNICATION_EVENT,
         handleCommunicationEvent);
+
+      // Open the phone panel when were are assigned a task
+      manager.workerClient?.on("reservationCreated", () => openFrame.show());
+
+      // Invoke CTI.do when a reservation is accepted
+      flex.Actions.addListener('afterAcceptTask', (payload) => {
+        console.log('afterAcceptTask', payload.task);
+
+        // Open the interaction created by OpenFrame for Click2Dial
+        if (payload.task.attributes.direction === 'outbound') {
+          console.log('outbound call accepted');
+          openFrame.openServiceNowForm({ entity: 'interaction', query: payload.task.attributes.interationQuery });
+        } else {
+
+
+          let callerId = payload.task.attributes.from;
+          let channelType = payload.task.attributes.channelType;
+          console.log('callerId', callerId);
+          // let customerId = payload.task.attributes.customerId;
+          let incidentId = payload.task.attributes.incidentId;
+
+          // openFrame.openServiceNowForm({ entity: 'cti', query: `sysparm_caller_phone=${callerId}` });
+          // openFrame.openServiceNowForm({
+          //   entity: 'interaction',
+          //   query: `sys_id=-1&sysparm_query=type=Phone^short_description=${channelType} from ${callerId}^work_notes=Speech to text result goes here`
+          // });
+          // openFrame.openServiceNowForm({ entity: '', query: 'sys_id=1204b56797f411103bc079100153afbe' });
+
+          if (incidentId) {
+            openFrame.openServiceNowForm({ entity: 'incident', query: `sys_id=${incidentId}` });
+          }
+          //   openFrame.openServiceNowForm({ entity: 'incident', query: `sys_id=${incidentId}` });
+          // } else if (customerId) {
+          //   openFrame.openServiceNowForm({ entity: 'customer_account', query: `sys_id=${customerId}` });
+          // }
+        }
+      });
     }
     function initFailure(error: any) {
       console.log("OpenFrame init failed: ", error);
     }
 
+    // Try to init OpenFrame, may not be loaded yet so delay it and retry if required.
     setTimeout(() => {
+      console.log(window.openFrameAPI);
       openFrame = window.openFrameAPI;
       openFrame.init(openFrameConfig, initSuccess, initFailure)
-    }, 1000);
-
-    manager.workerClient.on("reservationCreated", () => openFrame.show());
-
-    // Invoke CTI.do when a reservation is accepted
-    flex.Actions.addListener('beforeAcceptTask', (payload) => {
-      console.log('beforeAcceptTask', payload.task);
-      let callerId = payload.task.attributes.from;
-      console.log('callerId', callerId);
-      // let customerId = payload.task.attributes.customerId;
-      // let incidentId = payload.task.attributes.incidentId;
-
-      openFrame.openServiceNowForm({ entity: 'cti', query: `sysparm_caller_phone=${callerId}` });
-
-      // if (incidentId) {
-      //   openFrame.openServiceNowForm({ entity: 'incident', query: `sys_id=${incidentId}` });
-      // } else if (customerId) {
-      //   openFrame.openServiceNowForm({ entity: 'customer_account', query: `sys_id=${customerId}` });
-      // }
-    });
-  }
-
-  /**
-   * Registers the plugin reducers
-   *
-   * @param manager { Flex.Manager }
-   */
-  private registerReducers(manager: Flex.Manager) {
-    if (!manager.store.addReducer) {
-      // eslint-disable-next-line
-      console.error(`You need FlexUI > 1.9.0 to use built-in redux; you are currently on ${Flex.VERSION}`);
-      return;
-    }
-
-    manager.store.addReducer(namespace, reducers);
+    }, 3000);
   }
 }
