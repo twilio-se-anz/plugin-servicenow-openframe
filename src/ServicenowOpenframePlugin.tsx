@@ -24,11 +24,6 @@ export default class ServicenowOpenframePlugin extends FlexPlugin {
    */
   async init(flex: typeof Flex, manager: Flex.Manager): Promise<void> {
     // Load Openframe library
-    // var script = document.createElement("script");
-    // script.src = manager.serviceConfiguration.attributes.openframe_url;
-    // console.log('Openframe URL: ' + script.src);
-    // script.async = true;
-    // document.head.appendChild(script);
     loadJS(manager.serviceConfiguration.attributes.openframe_url);
 
     // Default layout
