@@ -1,6 +1,21 @@
-# Your custom Twilio Flex Plugin
+# Flex Plugin for ServiceNow Openframe
 
-Twilio Flex Plugins allow you to customize the appearance and behavior of [Twilio Flex](https://www.twilio.com/flex). If you want to learn more about the capabilities and how to use the API, check out our [Flex documentation](https://www.twilio.com/docs/flex).
+This Twilio Flex plugin provides ServiceNow integration using the [Openframe API](https://developer.servicenow.com/dev.do#!/reference/api/quebec/client/r_openFrameAPI-version). You must configure ServiceNow to enable Openframe. See the [ServiceNow documentation](https://docs.servicenow.com/en-US/bundle/tokyo-customer-service-management/page/product/customer-service-management/concept/c_OpenFrameOverview.html) for more information on Openframe.
+
+## Flex Verion
+This plugin supports Flex 2.0.
+
+## Flex Configuration Service
+This plugin depends on the ServiceNow Openframe Javascript library ([docs](https://docs.servicenow.com/en-US/bundle/tokyo-customer-service-management/page/product/customer-service-management/concept/c_OpenFrameOverview.html)) which is downloaded from your instance of ServiceNow. Since this URL is unique for every instance of ServiceNow, the URL has been added to the Flex Configuration Service. 
+
+You must add the `openframe_url` property to the `attributes` object (see below) on the Flex Configuration Service for your Flex Project before this plugin will work. See the [Twilio docs](https://www.twilio.com/docs/flex/developer/plugins/creating-styling-custom-components#external-styles) for steps to update your configuration.
+
+```json
+"attributes": {
+ ...
+ "openframe_url":"https://<your-instance-name>.service-now.com/scripts/openframe/latest/openFrameAPI.min.js"
+},
+```
 
 ## Setup
 
@@ -12,20 +27,3 @@ cd
 # If you use npm
 npm install
 ```
-
-Next, please install the [Twilio CLI](https://www.twilio.com/docs/twilio-cli/quickstart) by running:
-
-```bash
-brew tap twilio/brew && brew install twilio
-```
-
-Finally, install the [Flex Plugin extension](https://github.com/twilio-labs/plugin-flex/tree/v1-beta) for the Twilio CLI:
-
-```bash
-twilio plugins:install @twilio-labs/plugin-flex
-```
-
-## Development
-
-Run `twilio flex:plugins --help` to see all the commands we currently support. For further details on Flex Plugins refer to our documentation on the [Twilio Docs](https://www.twilio.com/docs/flex/developer/plugins/cli) page.
-
