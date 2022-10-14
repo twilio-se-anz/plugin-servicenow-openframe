@@ -29,7 +29,11 @@ export default class ServicenowOpenframePlugin extends FlexPlugin {
     flex.AgentDesktopView.defaultProps.showPanel2 = false;
     flex.AgentDesktopView.defaultProps.splitterOptions = { initialFirstPanelSize: "400px", minimumFirstPanelSize: "400px" };
     flex.RootContainer.Content.remove("project-switcher");
-    flex.MainHeader.defaultProps.logoUrl = manager.serviceConfiguration.attributes.logo_url;
+
+    // Load custom logo if configured
+    if (manager.serviceConfiguration.attributes.logo_url) {
+      flex.MainHeader.defaultProps.logoUrl = manager.serviceConfiguration.attributes.logo_url;
+    }
 
     // Prepend Environment value to NoTasks
     if (manager.serviceConfiguration.attributes.no_task_string_prefix) {
@@ -37,7 +41,7 @@ export default class ServicenowOpenframePlugin extends FlexPlugin {
     }
 
     // This will hold a reference to the Openframe Object once it is loaded.
-    let openFrame: any = null;
+    let openFrame: Window["openFrameAPI"];
 
     // Function to process messages from SNOW.
     function handleCommunicationEvent(context: any) {
@@ -46,12 +50,12 @@ export default class ServicenowOpenframePlugin extends FlexPlugin {
 
       // Click to Dial
       if (message.type === "OUTGOING_CALL") {
-        const interationQuery = message.data.data.find(d => d.entity === 'interaction')?.query;
+        const interactionQuery = message.data.data.find(d => d.entity === 'interaction')?.query;
 
         Flex.Actions.invokeAction("StartOutboundCall", {
           destination: message.data.metaData.phoneNumber,
           taskAttributes: {
-            interationQuery: interationQuery
+            interactionQuery: interactionQuery
           }
         });
       }
@@ -62,18 +66,21 @@ export default class ServicenowOpenframePlugin extends FlexPlugin {
       console.log("openframe configuration", snConfig);
       // Wire up agent state to SNOW agent state
       manager.events.addListener("workerActivityUpdated", (activity: Activity, allActivities: Map<string, Activity>) => {
-        openFrame.setPresenceIndicator(activity.name, activity.available ? 'green' : 'red');
+        openFrame.setPresenceIndicator(activity.name,
+          activity.available ?
+            openFrame.INDICATOR_COLORS.GREEN
+            : openFrame.INDICATOR_COLORS.RED);
       });
 
       // Set initial agent state in SNOW
-      openFrame.setPresenceIndicator(manager.workerClient?.activity.name, manager.workerClient?.activity.available ? 'green' : 'red');
+      openFrame.setPresenceIndicator(manager.workerClient?.activity.name ?? 'unknown', manager.workerClient?.activity.available ? openFrame.INDICATOR_COLORS.GREEN : openFrame.INDICATOR_COLORS.RED);
 
       // Register for communication event from TopFrame
       openFrame.subscribe(openFrame.EVENTS.COMMUNICATION_EVENT,
         handleCommunicationEvent);
 
       // Open the phone panel when were are assigned a task
-      manager.workerClient?.on("reservationCreated", () => openFrame.show());
+      manager.workerClient?.addListener('reservationCreated', () => openFrame.show());
 
       // Invoke CTI.do when a reservation is accepted - i.e. do a screenpop
       flex.Actions.addListener('beforeAcceptTask', (payload) => {
@@ -82,7 +89,7 @@ export default class ServicenowOpenframePlugin extends FlexPlugin {
         // Open the interaction created by OpenFrame for Click2Dial
         if (payload.task.attributes.direction === 'outbound') {
           console.log('Outbound call accepted');
-          openFrame.openServiceNowForm({ entity: 'interaction', query: payload.task.attributes.interationQuery });
+          openFrame.openServiceNowForm({ entity: 'interaction', query: payload.task.attributes.interactionQuery });
         } else {
           // These IDs are created or queried in the IVR. Property names flow through from ServiceNow.
           const { interaction_sys_id, incident_sys_id } = payload.task.attributes;
