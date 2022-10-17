@@ -5,6 +5,7 @@ import { FlexPlugin, loadJS } from '@twilio/flex-plugin';
 import { Activity } from 'twilio-taskrouter';
 
 import { ServiceNowMessage } from 'types/ServiceNowMessage';
+import { Themer } from './configuration/Themer';
 
 const PLUGIN_NAME = 'ServicenowOpenframePlugin';
 
@@ -23,12 +24,15 @@ export default class ServicenowOpenframePlugin extends FlexPlugin {
    * @param manager { Flex.Manager }
    */
   async init(flex: typeof Flex, manager: Flex.Manager): Promise<void> {
-
+    // Add theme colours
+    const config = Themer.generateTheme({ lightText: '#FFFFFF', darkText: '#005bb1', background: '#005bb1' });
+    manager.updateConfig(config);
 
     // Default layout
     flex.AgentDesktopView.defaultProps.showPanel2 = false;
     flex.AgentDesktopView.defaultProps.splitterOptions = { initialFirstPanelSize: "400px", minimumFirstPanelSize: "400px" };
     flex.RootContainer.Content.remove("project-switcher");
+
 
     // Load custom logo if configured
     if (manager.serviceConfiguration.attributes.logo_url) {
