@@ -70,14 +70,11 @@ export default class ServicenowOpenframePlugin extends FlexPlugin {
       console.log("openframe configuration", snConfig);
       // Wire up agent state to SNOW agent state
       manager.events.addListener("workerActivityUpdated", (activity: Activity, allActivities: Map<string, Activity>) => {
-        openFrame.setPresenceIndicator(activity.name,
-          activity.available ?
-            openFrame.INDICATOR_COLORS.GREEN
-            : openFrame.INDICATOR_COLORS.RED);
+        openFrame.setPresenceIndicator(activity.name, activity.available ? 'green' : 'red');
       });
 
       // Set initial agent state in SNOW
-      openFrame.setPresenceIndicator(manager.workerClient?.activity.name ?? 'unknown', manager.workerClient?.activity.available ? openFrame.INDICATOR_COLORS.GREEN : openFrame.INDICATOR_COLORS.RED);
+      openFrame.setPresenceIndicator(manager.workerClient?.activity.name ?? 'unknown', manager.workerClient?.activity.available ? 'green' : 'red');
 
       // Register for communication event from TopFrame
       openFrame.subscribe(openFrame.EVENTS.COMMUNICATION_EVENT,
@@ -92,6 +89,8 @@ export default class ServicenowOpenframePlugin extends FlexPlugin {
 
         // Open the interaction created by OpenFrame for Click2Dial
         if (payload.task.attributes.direction === 'outbound') {
+
+
           console.log('Outbound call accepted');
           openFrame.openServiceNowForm({ entity: 'interaction', query: payload.task.attributes.interactionQuery });
         } else {
