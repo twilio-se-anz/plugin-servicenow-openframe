@@ -1,14 +1,13 @@
-import { Flex } from "@twilio/flex-ui/src/FlexGlobal";
-import { ThemerParameters } from "./ThemerParameters";
+import { Flex } from '@twilio/flex-ui/src/FlexGlobal';
+import { ThemerParameters } from './ThemerParameters';
 
-export class Themer{
+export class Themer {
   static generateTheme(params: ThemerParameters) {
-    
     const { lightText, darkText, background, themeName } = params;
 
     const newThemeConfig = {
-      colorTheme: {
-        baseName: themeName || "FlexLight",
+      theme: {
+        baseName: themeName || 'FlexLight',
         colors: {
           lightText: lightText,
           darkText: darkText,
@@ -22,20 +21,20 @@ export class Themer{
             Button: {
               color: lightText,
               background: background,
-            }
+            },
           },
-        
+
           SideNav: {
             Container: {
-              background: darkText,
+              background: lightText,
             },
             Button: {
-              background: darkText,
-              color: lightText
+              background: lightText,
+              color: darkText,
             },
             Icon: {
-              color: lightText
-            }
+              color: darkText,
+            },
           },
 
           TaskCanvasHeader: {
@@ -44,22 +43,22 @@ export class Themer{
               color: lightText,
             },
             EndTaskButton: {
-              background: darkText,
+              background: background,
               color: lightText,
-            }
+            },
           },
           TaskList: {
             Item: {
               Icon: {
                 background: background,
                 color: lightText,
-              }
-            }
-          }
-        }
-      }
+              },
+            },
+          },
+        },
+      },
     };
-    
+
     return newThemeConfig as Flex.Config;
   }
 }
